@@ -1,0 +1,26 @@
+{
+  "name": "image-search",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://idahogurl@github.com/idahogurl/image-search.git"
+  },
+  "author": "Rebecca Vest",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/idahogurl/image-search/issues"
+  },
+  "homepage": "https://github.com/idahogurl/image-search#readme",
+  "dependencies": {
+    "axios": "^0.16.1",
+    "express": "^4.15.2",
+    "mongodb": "^2.2.25",
+    "sprintf-js": "^1.0.3"
+  }
+}
