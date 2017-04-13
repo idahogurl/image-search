@@ -30,130 +30,103 @@ https://www.flickr.com/photos/{user-id}/{photo-id} - individual photo
 var express = require("express");
 var mongodb = require("mongodb").MongoClient;
 var axios = require("axios");
-var sprintf = require("sprintf-js");
+var sprintf_js = require("sprintf-js");
 //var RSVP = require('rsvp');
 
 var app = express();
 
-var connStr = "mongodb://idahogurl:Re99ba1Ml@ds155130.mlab.com:55130/heroku_29g02tsm"
+var connStr = "";
 
-function getBaseUrl(farmId, serverId) {
-    
+function logSearch(term, res)
+{
+    try 
+    {
+        mongodb.connect(connStr, 
+            function (err, database) 
+            {
+                if (err) throw err;
+
+                var when = new Date();
+
+                var insert = database.collection("image_searches").insert({term: term, when: when.toString()},
+                function(result)
+                {
+                    if (result && result.hasWriteError()) 
+                    {
+                        database.close();
+                        throw { message: result.writeError.errmsg };
+                    }
+                });
+            });
+    }
+    catch(err) 
+    {
+        console.log(err.message);
+        res.json({error: error.message});
+    }
 }
 
-
-// var promise = new RSVP.Promise(function(resolve, reject) {
-//   mongodb.connect(connStr, function (err, database) {
-//         console.log("here");
-//         if (err) reject(err);
-//         return resolve(database);
-//     }); 
-// });
 try {
-    app.get("/imagesearch/:keywords", function (req, res) {
+    app.get("/api/imagesearch/:keywords", function (req, res) {
     //
     try {
         
         axios.get('https://api.flickr.com/services/rest/', {
             params: {
             method: "flickr.photos.search",
-            api_key: "9da2d7f5b500d3f829998a98e4fbb2fb",
+            api_key: "15fab64c1feecfb6223ae6bdfd71c600",
             text: req.params.keywords,
             safe_search: 1,
             page: req.query.offset,
             format: "json"
             }
         })
-        .then(function (response) {
+        .then(function (response) 
+        {
             var baseUrl = "https://farm%s.staticflickr.com/%s/";
-            
+
             var dataStr = response.data.slice("jsonFlickrApi(".length, -1);
+            
             var data = JSON.parse(dataStr);
             var results = data.photos.photo.map(function(p) {
-                var url = sprintf.sprintf(baseUrl + "%s_%s", p.farm, p.server, p.id, p.secret);
-                return
+                var url = sprintf_js.sprintf(baseUrl + "%s_%s", p.farm, p.server, p.id, p.secret);
+                var result =
                 {
                     url: url + ".jpg",
                     snippet: p.title,
                     thumbnail: url + "_t.jpg",
-                    context: sprintf.sprintf("https://www.flickr.com/photos/%s/%s", p.owner, p.id
+                    context: sprintf_js.sprintf("https://www.flickr.com/photos/%s/%s", p.owner, p.id)
                 };
+                return result;
             });
-            res.send(response.data);
-        })
-        .catch(function (error) {
-            console.log(error);
-        });
-       
-        // promise.then(
-        //     function(database) 
-        //     {
-            
-        //     return database; 
-        //     }, 
-        //     function(err) 
-        //     {
-        //         res.json({error: err.message});
-        //     }
-        // )
-        // .then(
-        //     function(database)
-        //     {
-        //         var getNextSequence = new RSVP.Promise(function(resolve, reject) {
-        //             //https://docs.mongodb.com/v3.0/tutorial/create-an-auto-incrementing-field/
-        //             database.collection("counters").findAndModify({ _id: "url_id" }, [['_id', 'asc']], { $inc: { seq: 1 } }, { new: true, upsert: true }, function (err, doc) {
-        //                 if (err) reject(err);
-                    
-        //                 console.log(doc.value.seq);
-        //                 resolve({ database: database, id: doc.value.seq });
-        //             });
-        //         });
-        //         return getNextSequence;
-        //     }
-        // )
-        // .then(
-        //     function(data){
-        //         var insert = new RSVP.Promise(
-        //             function(resolve, reject) 
-        //             {
-        //                 data.database.collection("short_urls")
-        //                     .insert({ _id: data.id, url: req.query.url },
-        //                         function (result)
-        //                         {
-        //                             console.log(data.id);
-        //                             if (result && result.hasWriteError()) reject(result.writeError.errmsg);
 
-        //                             resolve(data.id);
-        //                         }
-        //                     );
-        //             }
-        //         );
-        //         return insert;
-        //     }
-        // )
-        // .then(
-        //     function(id) 
-        //     {
-        //         res.json({ "original_url":req.query.url, "short_url":"http://0.0.0.0:3000/" + id });
-        //     }
-        // )
-        // .catch(
-        //     function(error) 
-        //     {
-        //         res.json({error: error.message});
-        //     }
-        // );
+            logSearch(req.params.keywords, res);
+
+            res.send(results);
+        })
+        .catch(function (error) 
+        {
+            console.log(error);
+            res.status(500);
+            res.json({error: error.message});
+        });
     }
     catch(err) 
     {
-        res.json({error: error.message});
+        console.log(err.message);
+        res.status(500);
+        res.json({error: err.message});
     }
     });
-} catch (err) {
+}
+ catch (err) 
+{
     console.log(err.message);
+    res.status(500);
+    res.json({error: err.message});
 }
 
-app.get("/:id", 
+app.get("/api/latest/imagesearch", 
     function (req, res) 
     {
         try 
@@ -161,31 +134,36 @@ app.get("/:id",
             mongodb.connect(connStr, 
                 function (err, database) 
                 {
-                    var document = database.collection("short_urls").findOne({ _id: Number(req.params.id) });
-                    
-                    document.then(function(result) {
-                        if (!result) 
+                    if (err) throw err;
+
+                    database.collection("image_searches").find({}, { term: 1, when: 1, _id: 0}).toArray(
+                        function(err, searches)
                         {
-                            res.sendStatus(404);
-                        } 
-                        else
-                        {
-                            res.redirect(result.url);
+                            if (err) 
+                            {
+                                database.close();
+                                throw err;
+                            }
+                            database.close();
+
+                            res.send(searches);
                         }
+                    );
                 });
-            });
         } 
         catch(err) 
         {
             console.log(err.message);
+            res.status(500);
+            res.json({error: err.message});
         }
     }
 );
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, "0.0.0.0",
+app.listen(PORT, "localhost",
     function () 
     {
-    console.log("App listening on port " + PORT);
+        console.log("App listening on port " + PORT);
     }
 );
