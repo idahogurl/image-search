@@ -20,7 +20,7 @@
   "dependencies": {
     "axios": "^0.18.1",
     "express": "^4.15.2",
-    "mongodb": "^2.2.25",
+    "mongodb": "^3.6.1",
     "sprintf-js": "^1.0.3"
   }
 }
